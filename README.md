@@ -70,3 +70,14 @@ Jeśli chcesz przełączyć z HTTPS na SSH:
 ``` bash
 git remote set-url origin git@github.com:UŻYTKOWNIK/REPO.git
 ```
+---
+## 🛠️ Budowanie projektu
+W folderze projektu:
+``` bash
+anchor build
+```
+## 🧪 Testowanie projektu
+Uruchom testy integracyjne:
+``` bash
+anchor test
+```
