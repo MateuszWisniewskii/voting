@@ -7,7 +7,9 @@ Kontrakt umożliwia:
 - dodawanie kandydatów,
 - głosowanie przez użytkowników,
 - sprawdzanie wyników.
-
+---
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![GitHub repo size](https://img.shields.io/github/repo-size/MateuszWisniewskii/voting)
 ---
 
 ## 📦 Funkcjonalności
