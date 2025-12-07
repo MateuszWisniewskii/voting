@@ -7,6 +7,7 @@ skip-lint = false
 
 [programs.localnet]
 voting = "9Ee7Lm5rtFdYnffKQJo91diMRFa2ZYgxU3jFDkMbMb6b"
+voting_manager = "4kQ7rpUTcxYfSLVWcfFudGuUhxPCwqsDZw1z33gEDbBf"
 
 [registry]
 url = "https://api.apr.dev"
