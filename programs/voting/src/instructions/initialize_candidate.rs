@@ -9,6 +9,13 @@ pub struct InitializeCandidate<'info> {
     pub authority: Signer<'info>,
 
     #[account(
+        mut,
+        seeds = [b"poll_seed".as_ref(), poll_id.to_le_bytes().as_ref()],
+        bump
+    )]
+    pub poll: Account<'info, Poll>,
+
+    #[account(
         init_if_needed,
         payer = authority,
         space = ANCHOR_DISCRIMINATOR_SIZE + Candidate::INIT_SPACE,
@@ -16,13 +23,6 @@ pub struct InitializeCandidate<'info> {
         bump
     )]
     pub candidate: Account<'info, Candidate>,
-
-    #[account(
-        mut,
-        seeds = [b"poll_seed".as_ref(), poll_id.to_le_bytes().as_ref()],
-        bump
-    )]
-    pub poll: Account<'info, Poll>,
 
     #[account()]
     pub system_program: Program<'info, System>,
@@ -43,6 +43,7 @@ pub fn handler(
 
     candidate.candidate_name = candidate_name;
     candidate.candidate_votes = 0;
+    poll.poll_option_index = poll.poll_option_index.checked_add(1).ok_or(VotingError::Overflow)?;
 
     Ok(())
 }

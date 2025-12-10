@@ -23,11 +23,11 @@ pub mod voting {
         initialize_candidate::handler(ctx, poll_id, candidate_name)
     }
 
-    pub fn vote(ctx: Context<Vote>, poll_id: u64) -> Result<()> {
-        vote::handler(ctx, poll_id)
+    pub fn vote(ctx: Context<Vote>, poll_id: u64, candidate_name: String) -> Result<()> {
+        vote::handler(ctx, poll_id, candidate_name)
     }
 
-    pub fn voting_status(ctx: Context<VotingStatus>, poll_id: u64) -> Result<()> {
-        voting_status(ctx, poll_id)
-    }
+    // pub fn voting_status(ctx: Context<VotingStatus>, poll_id: u64) -> Result<()> {
+    //     voting_status(ctx, poll_id)
+    // }
 }
