@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 #[error_code]
-pub enum ErrorCode {
-    #[msg("Custom error message")]
-    CustomError,
+pub enum VotingError {
+    #[msg("Nie można dodawać kandydatów po rozpoczęciu głosowania")]
+    AddingCandidateAfterVotingStart,
 }
