@@ -15,7 +15,15 @@ declare_id!("4kQ7rpUTcxYfSLVWcfFudGuUhxPCwqsDZw1z33gEDbBf");
 pub mod voting_manager {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        initialize::handler(ctx)
+    pub fn initialize_manager(ctx: Context<InitializeManager>) -> Result<()> {
+        initialize_manager::handler(ctx)
+    }
+
+    pub fn create_event(ctx: Context<CreateEvent>) -> Result<()> {
+        create_event::handler(ctx)
+    }
+
+    pub fn resolve_event(ctx: Context<ResolveEvent>) -> Result<()> {
+        resolve_event::handler(ctx)
     }
 }
