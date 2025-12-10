@@ -21,7 +21,16 @@ pub struct InitializePoll<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<InitializePoll>, poll_id: u64) -> Result<()> {
-    msg!("Greetings from: {:?}", ctx.program_id);
+pub fn handler(ctx: Context<InitializePoll>, poll_id: u64, start_time: u64, end_time: u64, poll_name: String, poll_description: String) -> Result<()> {
+    let poll = &mut ctx.accounts.poll;
+
+    poll.authority = ctx.accounts.authority.key();
+    poll.poll_name = poll_name;
+    poll.poll_description = poll_description;
+    poll.start_time = start_time;
+    poll.end_time = end_time;
+    poll.poll_option_index = 0;
+    poll.winning_candidate = "Jeszcze nie wyłoniono zwycięskiego kandydata".to_string();
+    
     Ok(())
 }
