@@ -83,3 +83,19 @@ Uruchom testy integracyjne:
 ``` bash
 anchor test
 ```
+W razie problemów z testami upewnij się, że dodane są:
+- anchor-bankrun
+- solana-bankrun
+
+Można je dodać za pomocą komendy:
+``` bash
+yarn add anchor-bankrun
+```
+oraz:
+``` bash
+yarn add solana-bankrun
+```
+Więcej informacji na temat tych bibliotek można znaleźć w ich repozytoriach:
+- [anchor-bankrun](https://github.com/kevinheavey/anchor-bankrun)
+- [solana-bankrun](https://github.com/kevinheavey/solana-bankrun) / [dokumentacja](https://kevinheavey.github.io/solana-bankrun/)
+
