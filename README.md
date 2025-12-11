@@ -32,6 +32,7 @@ graph TD;
     Manager-->|CPI: Initialize Poll|Voting;
     Manager-->|CPI: Add Candidates|Voting;
     User-->|Cast Vote|Voting;
+
 ---
 
 ## ⚙️ Wymagania i Instalacja
