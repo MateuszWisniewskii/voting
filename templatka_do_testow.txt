@@ -97,6 +97,8 @@ describe("Ogólny test działania kontraktu", () => {
   let pollSeeds;
   let candidateASeeds;
   let candidateBSeeds;
+  let candidateCSeeds;
+
   let userAVoteSeeds;
   let userBVoteSeeds;
   let userCVoteSeeds;
@@ -105,6 +107,8 @@ describe("Ogólny test działania kontraktu", () => {
   let pollPda;
   let candidateAPda;
   let candidateBPda;
+  let candidateCPda;
+  
   let userAVotePda;
   let userBVotePda;
   let userCVotePda;
@@ -160,6 +164,12 @@ describe("Ogólny test działania kontraktu", () => {
       Buffer.from(nameCandidateB),
     ];
 
+    candidateCSeeds = [
+      Buffer.from("candidate_seed"),
+      new BN(pollId).toArrayLike(Buffer, "le", 8),
+      Buffer.from(nameCandidateC),
+    ];
+
     userAVoteSeeds = [
       Buffer.from("vote_seed"),
       userA.publicKey.toBytes(),
@@ -191,6 +201,11 @@ describe("Ogólny test działania kontraktu", () => {
 
     [candidateBPda] = PublicKey.findProgramAddressSync(
       candidateBSeeds,
+      puppetProgram.programId
+    );
+
+    [candidateCPda] = PublicKey.findProgramAddressSync(
+      candidateCSeeds,
       puppetProgram.programId
     );
 
