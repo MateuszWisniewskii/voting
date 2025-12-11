@@ -2,7 +2,7 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![GitHub repo size](https://img.shields.io/github/repo-size/MateuszWisniewskii/voting)
-![Solana](https://img.shields.io/badge/Solana-Mainnet-linear)
+![Solana](https://img.shields.io/badge/Solana-Devnet-linear)
 ![Anchor](https://img.shields.io/badge/Anchor-Framework-blue)
 ---
 
