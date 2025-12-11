@@ -96,6 +96,6 @@ oraz:
 yarn add solana-bankrun
 ```
 Więcej informacji na temat tych bibliotek można znaleźć w ich repozytoriach:
-- [anchor-bankrun](https://github.com/kevinheavey/anchor-bankrun)
-- [solana-bankrun](https://github.com/kevinheavey/solana-bankrun) / [dokumentacja](https://kevinheavey.github.io/solana-bankrun/)
+- [repozytorium anchor-bankrun](https://github.com/kevinheavey/anchor-bankrun)
+- [repozytorium solana-bankrun](https://github.com/kevinheavey/solana-bankrun) / [dokumentacja](https://kevinheavey.github.io/solana-bankrun/)
 
