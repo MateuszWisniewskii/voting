@@ -1,40 +1,47 @@
-# 🎯 Voting dApp – Inteligentny kontrakt do głosowań (Solana + Anchor)
+# 🎯 Voting System – Solana Smart Contracts
 
-Voting dApp to inteligentny kontrakt napisany w języku **Rust** z użyciem frameworka **Anchor**, działający na blockchainie **Solana**.  
-Kontrakt umożliwia:
-
-- tworzenie wydarzeń/głosowań,
-- dodawanie kandydatów,
-- głosowanie przez użytkowników,
-- sprawdzanie wyników.
----
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![GitHub repo size](https://img.shields.io/github/repo-size/MateuszWisniewskii/voting)
+![Solana](https://img.shields.io/badge/Solana-Mainnet-linear)
+![Anchor](https://img.shields.io/badge/Anchor-Framework-blue)
 ---
 
 ## 📦 Funkcjonalności
 
-### ✔️ Tworzenie wydarzenia / głosowania
-Osoba upoważniona może utworzyć nowe głosowanie, które zawiera:
-- nazwę,
-- opis,
-- listę kandydatów (początkowo pustą).
+### 👑 Voting Manager (Administrator)
+* **Tworzenie wydarzeń:** Inicjalizacja nowych ankiet z nazwą, opisem i ramami czasowymi.
+* **Obsługa kandydatów:** Dodawanie dowolnej liczby kandydatów w momencie tworzenia ankiety (batch processing).
+* **Cross-Program Invocation (CPI):** Bezpieczne wywoływanie kontraktu Voting w celu alokacji kont.
 
-### ✔️ Dodawanie kandydatów
-Twórca wydarzenia może dodać dowolną liczbę kandydatów.
-
-### ✔️ Oddawanie głosu
-Każdy użytkownik może oddać **jeden głos** na wybranego kandydata w danym wydarzeniu.
-
-### ✔️ Sprawdzanie wyników
-Każdy może odczytać:
-- listę kandydatów,
-- liczbę głosów na każdego z nich,
-- informacje o wydarzeniu.
+### 🗳️ Voting Client (Użytkownik)
+* **Oddawanie głosu:** Każdy użytkownik może oddać **jeden głos** na wybranego kandydata.
+* **Walidacja czasu:** Głosowanie możliwe tylko w określonym przedziale czasowym (Unix Timestamp).
+* **Transparentność:** Publiczny dostęp do listy kandydatów i bieżących wyników.
 
 ---
 
-## ⚙️ Instalacja oprogramowania
+## 🏗️ Architektura
+
+System działa w oparciu o dwa programy:
+1.  **Manager:** Generuje unikalne ID ankiety i poprzez CPI tworzy konta w programie Voting.
+2.  **Voting:** Przechowuje stan (liczba głosów) i obsługuje logikę użytkownika końcowego.
+
+```mermaid
+graph TD;
+    Admin-->|Create Event|Manager;
+    Manager-->|CPI: Initialize Poll|Voting;
+    Manager-->|CPI: Add Candidates|Voting;
+    User-->|Cast Vote|Voting;
+---
+
+## ⚙️ Wymagania i Instalacja
+
+Upewnij się, że masz zainstalowane:
+- Rust & Cargo
+- Solana CLI
+- Anchor Version Manager (avm)
+- Node.js & Yarn
+
 [Wszystkie wymagane kroki konfiguracji znajdują się w oficjalnej dokumentacji Anchor](https://www.anchor-lang.com/docs/installation)
 
 ---
