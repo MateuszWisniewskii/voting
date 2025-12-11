@@ -31,9 +31,8 @@ graph TD;
     Admin-->|Create Event|Manager;
     Manager-->|CPI: Initialize Poll|Voting;
     Manager-->|CPI: Add Candidates|Voting;
-    User-->|Cast Vote|Voting;
+    User-->|Vote|Voting;
 ```
----
 
 ## ⚙️ Wymagania i Instalacja
 
