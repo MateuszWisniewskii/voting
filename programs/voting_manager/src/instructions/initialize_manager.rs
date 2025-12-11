@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use voting::ANCHOR_DISCRIMINATOR_SIZE;
+use crate::ANCHOR_DISCRIMINATOR_SIZE;
 
 use crate::Manager;
 

@@ -19,7 +19,7 @@ pub struct InitializeCandidate<'info> {
         init_if_needed,
         payer = authority,
         space = ANCHOR_DISCRIMINATOR_SIZE + Candidate::INIT_SPACE,
-        seeds = [b"candidate_seed".as_ref(), poll_id.to_be_bytes().as_ref(), candidate_name.as_ref()],
+        seeds = [b"candidate_seed".as_ref(), poll_id.to_le_bytes().as_ref(), candidate_name.as_ref()],
         bump
     )]
     pub candidate: Account<'info, Candidate>,
