@@ -19,8 +19,15 @@ pub mod voting_manager {
         initialize_manager::handler(ctx)
     }
 
-    pub fn create_event(ctx: Context<CreateEvent>) -> Result<()> {
-        create_event::handler(ctx)
+    pub fn create_event(
+        ctx: Context<CreateEvent>,
+        start_time: u64,
+        end_time: u64,
+        poll_name: String,
+        poll_description: String,
+        candidate_names: Vec<String>
+    ) -> Result<()> {
+        create_event::handler(ctx, start_time, end_time, poll_name, poll_description, candidate_names)
     }
 
     pub fn resolve_event(ctx: Context<ResolveEvent>) -> Result<()> {
