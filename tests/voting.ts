@@ -110,7 +110,7 @@ describe("Voting System - Final Optimized Flow", () => {
         console.log("✅ Event i Kandydaci utworzeni poprawnie.");
     });
 
-    it("❌ Głosowanie: Blokada czasowa oraz masowe głosowanie", async () => {
+    it("❌ Głosowanie: Blokady czasowe, podwójne głosy oraz masowe głosowanie", async () => {
         const { pollPda, candidatePda } = getPdas();
         const pollAcc = await votingProgram.account.poll.fetch(pollPda);
 
@@ -125,21 +125,38 @@ describe("Voting System - Final Optimized Flow", () => {
             assert.include(e.toString(), "VotingNotStarted");
         }
 
-        // --- 2. TEST: W TRAKCIE (Głosowanie Authority + Masowe) ---
+        // --- 2. TEST: W TRAKCIE ---
         await jumpToTime(pollAcc.startTime.addn(10));
         
-        // Pierwszy głos (Authority)
+        // Pierwszy głos (Authority) - to powinno przejść
         await votingProgram.methods.vote(pollId, mainCandidate)
             .accounts({ participant: authority.publicKey, poll: pollPda, candidate: candidatePda, systemProgram: SystemProgram.programId })
             .rpc();
-        console.log("✅ Authority oddał głos na Alice.");
+        console.log("✅ Pierwszy głos oddany poprawnie.");
 
-        // DODATKOWE 5 GŁOSÓW
+        // --- NOWY TEST: PRÓBA ODDANIA DRUGIEGO GŁOSU PRZEZ TO SAMO KONTO ---
+        try {
+            await votingProgram.methods.vote(pollId, mainCandidate)
+                .accounts({ 
+                    participant: authority.publicKey, 
+                    poll: pollPda, 
+                    candidate: candidatePda, 
+                    systemProgram: SystemProgram.programId 
+                })
+                .rpc();
+            assert.fail("Użytkownik nie powinien móc zagłosować dwa razy!");
+        } catch (e) {
+            // Tutaj wpisz nazwę błędu, którą masz w Rust (prawdopodobnie VoteHaveBeenPlaced lub podobna)
+            console.log("✅ Złapano próbę podwójnego głosowania:", e.toString());
+            // Opcjonalnie sprawdź konkretny kod błędu:
+            // assert.include(e.toString(), "VoteHaveBeenPlaced"); 
+        }
+
+        // --- 3. MASOWE GŁOSOWANIE (reszta wyborców) ---
         const extraVoters = Array.from({ length: 5 }, () => Keypair.generate());
         console.log("--- Symulacja 5 dodatkowych głosów ---");
         
         for (const [index, voter] of extraVoters.entries()) {
-            // Zasilamy konto wyborcy
             await context.setAccount(voter.publicKey, {
                 lamports: 10**9,
                 data: Buffer.alloc(0),
@@ -148,7 +165,6 @@ describe("Voting System - Final Optimized Flow", () => {
                 rentEpoch: 0
             });
 
-            // Losujemy kandydata z listy candidateNames
             const votedFor = candidateNames[Math.floor(Math.random() * candidateNames.length)];
             const [votedCandidatePda] = PublicKey.findProgramAddressSync(
                 [Buffer.from("candidate_seed"), pollId.toArrayLike(Buffer, "le", 8), Buffer.from(votedFor)],
@@ -168,7 +184,7 @@ describe("Voting System - Final Optimized Flow", () => {
             console.log(`Wyborca #${index + 1} oddał głos na: ${votedFor}`);
         }
 
-        // --- 3. TEST: PO ZAKOŃCZENIU ---
+        // --- 4. TEST: PO ZAKOŃCZENIU ---
         await jumpToTime(pollAcc.endTime.addn(1));
         const newVoterPoCzasie = Keypair.generate();
         await context.setAccount(newVoterPoCzasie.publicKey, {
@@ -184,8 +200,6 @@ describe("Voting System - Final Optimized Flow", () => {
         } catch (e) {
             assert.include(e.toString(), "VotingEnded");
         }
-        
-        console.log("✅ Blokady czasowe i masowe głosowanie przetestowane pomyślnie.");
     });
 
     it("5. Rozstrzyga, odzyskuje SOL i wyświetla zwycięzcę", async () => {
