@@ -12,4 +12,6 @@ pub enum VotingError {
     VotingEnded,
     #[msg("zmienna przepełniła się. Overflow occured")]
     Overflow,
+    #[msg("Głosowanie wciąż trwa.")]
+    VotingStillActive,
 }

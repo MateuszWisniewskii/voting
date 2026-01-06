@@ -7,5 +7,8 @@ pub use initialize_candidate::*;
 pub mod vote;
 pub use vote::*;
 
+pub mod resolve_poll;
+pub use resolve_poll::*; // <--- TEGO PRAWDOPODOBNIE BRAKOWAŁO
+
 pub mod voting_status;
 pub use voting_status::*;

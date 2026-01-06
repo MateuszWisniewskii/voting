@@ -37,7 +37,10 @@ pub mod voting_manager {
         )
     }
 
-    pub fn resolve_event(ctx: Context<ResolveEvent>) -> Result<()> {
-        resolve_event::handler(ctx)
+    pub fn resolve_event<'info>(
+        ctx: Context<'_, '_, '_, 'info, ResolveEvent<'info>>, 
+        poll_id: u64
+    ) -> anchor_lang::Result<()> {
+        instructions::resolve_event::handler(ctx, poll_id)
     }
 }
