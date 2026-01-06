@@ -6,7 +6,10 @@ use crate::{error::VotingError, Candidate, Poll, ANCHOR_DISCRIMINATOR_SIZE};
 #[instruction(poll_id: u64, candidate_name: String)]
 pub struct InitializeCandidate<'info> {
     #[account(mut)]
-    pub authority: Signer<'info>,
+    pub payer: Signer<'info>, // <--- DODAJ TO KONTO
+
+    /// CHECK: PDA Managera
+    pub authority: UncheckedAccount<'info>, // <--- ZMIEŃ na UncheckedAccount
 
     #[account(
         mut,
@@ -17,14 +20,13 @@ pub struct InitializeCandidate<'info> {
 
     #[account(
         init_if_needed,
-        payer = authority,
+        payer = payer, // <--- ZMIEŃ na payer
         space = ANCHOR_DISCRIMINATOR_SIZE + Candidate::INIT_SPACE,
         seeds = [b"candidate_seed".as_ref(), poll_id.to_le_bytes().as_ref(), candidate_name.as_ref()],
         bump
     )]
     pub candidate: Account<'info, Candidate>,
 
-    #[account()]
     pub system_program: Program<'info, System>,
 }
 
@@ -38,7 +40,7 @@ pub fn handler(
     let current_time = Clock::get()?.unix_timestamp;
 
     if current_time > (poll.start_time as i64) {
-        return Err(VotingError::AddingCandidateAfterVotingStart.into());
+       return Err(VotingError::AddingCandidateAfterVotingStart.into());
     }
 
     candidate.candidate_name = candidate_name;

@@ -1,14 +1,40 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program, BN } from "@coral-xyz/anchor";
+import { VotingManager } from "../target/types/voting_manager";
 import { Voting } from "../target/types/voting";
 import { BankrunProvider, startAnchor } from "anchor-bankrun";
-import { AccountInfo, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
+import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
+import { assert } from "chai";
 import { Clock } from "solana-bankrun";
 
-const IDL = require("../target/idl/voting.json");
+describe("Voting System Full Flow", () => {
+    let context;
+    let provider;
+    let managerProgram: Program<VotingManager>;
+    let votingProgram: Program<Voting>;
+    let authority: Keypair;
 
-// funkcje ułatwiające manipulacje czasem
-async function setClock(context: any, newTimestamp: number | bigint) {
+    const VOTING_IDL = require("../target/idl/voting.json");
+    const MANAGER_IDL = require("../target/idl/voting_manager.json");
+
+    before(async () => {
+        authority = Keypair.generate();
+        context = await startAnchor(process.cwd(), [
+            { name: "voting_manager", programId: new PublicKey("HqFLnX37E2rVeU3QN9ZdiKHiQrRj5C1t3Sqzyvy9HZES") },
+            { name: "voting", programId: new PublicKey("3QtBbSDvHi2wAZe1akqUSbbWQ2VSN9iADkqsTgT6J5SR") }
+        ], [
+            {
+                address: authority.publicKey,
+                info: { lamports: 10 * 10 ** 9, data: Buffer.alloc(0), owner: SystemProgram.programId, executable: false, rentEpoch: 0 }
+            }
+        ]);
+
+        provider = new BankrunProvider(context);
+        provider.wallet = new anchor.Wallet(authority);
+        managerProgram = new Program<VotingManager>(MANAGER_IDL, provider);
+        votingProgram = new Program<Voting>(VOTING_IDL, provider);
+    });
+    async function setClock(context: any, newTimestamp: number | bigint) {
   const client = context.banksClient;
   const oldClock = await client.getClock();
 
@@ -23,225 +49,227 @@ async function setClock(context: any, newTimestamp: number | bigint) {
   context.setClock(newClock);
   return newClock;
 }
-
-// funkcja do wyświetlania aktualnego czasu
 function logClock(clock: Clock) {
   console.log("---------------------------");
   console.log("Aktualny czas w symulacji (Unix Timestamp):", clock.unixTimestamp);
   console.log("Aktualny czas w symulacji:", new Date(Number(clock.unixTimestamp) * 1000).toLocaleString());
   console.log("---------------------------");
+  return clock.unixTimestamp;
 }
+it("Wyświetla tylko aktualny czas blockchaina", async () => {
+       const clockBefore = await context.banksClient.getClock();
+        logClock(clockBefore);
+        const startTs = clockBefore.unixTimestamp + 5n;
+        const endTs = startTs + 1000n;
+        const startTime = new BN(startTs.toString());
+        const endTime = new BN(endTs.toString());
+        console.log(startTime);
+        console.log(endTime);
+    });
+   it("1. Tworzy event i wyświetla jego dane", async () => {
+        const [managerPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("manager_seed"), authority.publicKey.toBuffer()],
+            managerProgram.programId
+        );
 
-// funkcja do wyświetlania danego PDA oraz seedów
-function logPda(name: string, pda: PublicKey, seeds: (Buffer | Uint8Array | string)[]) {
-  console.log("---------------------------");
-  console.log(`${name} PDA: ${pda.toBase58()}`);
-  console.log("Seeds:");
-  seeds.forEach((s, i) => {
-    if (typeof s === "string") {
-      console.log(`  [${i}]: "${s}"`);
-    } else if (s instanceof Buffer || s instanceof Uint8Array) {
-      console.log(`  [${i}]:`, Buffer.from(s).toString("hex"));
-    } else {
-      console.log(`  [${i}]:`, s);
-    }
-  });
-  console.log("---------------------------");
-}
+        // Inicjalizacja managera (jeśli nie był zainicjalizowany wcześniej)
+        try {
+            await managerProgram.methods
+                .initializeManager()
+                .accounts({
+                    authority: authority.publicKey,
+                    manager: managerPda,
+                    systemProgram: SystemProgram.programId,
+                })
+                .signers([authority])
+                .rpc();
+        } catch (e) {
+            console.log("Manager już zainicjalizowany lub błąd inicjalizacji");
+        }
 
-// funkcja do wyświetlania balancu danego konta
-async function printBalance(context: any, name: string, publicKey: PublicKey) {
-  const balance = await context.banksClient.getBalance(publicKey);
+        const pollId = new BN(0);
+        const pollName = "Głosowanie na Przewodniczącego";
+        const candidateNames = ["Alice", "Bob"];
 
-  console.log("---------------------------");
-  console.log(`${name} publicKey: ${publicKey.toBase58()}`);
-  console.log(`${name} lamports: ${balance}`);
-  console.log(`${name} SOL: ${Number(balance) / 1_000_000_000}`);
-  console.log("---------------------------");
-}
+        const [pollPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("poll_seed"), pollId.toArrayLike(Buffer, "le", 8)],
+            votingProgram.programId
+        );
 
-// funkcja do konwersji kwoty w SOL na lamporty
-function solToLamports(solAmount: number) {
-  return solAmount * anchor.web3.LAMPORTS_PER_SOL;
-}
+        const candidateRemainingAccounts = candidateNames.map(name => {
+            const [pda] = PublicKey.findProgramAddressSync(
+                [
+                    Buffer.from("candidate_seed"),
+                    pollId.toArrayLike(Buffer, "le", 8),
+                    Buffer.from(name)
+                ],
+                votingProgram.programId
+            );
+            return { pubkey: pda, isWritable: true, isSigner: false };
+        });
+        // funkcja do wyświetlania aktualnego czasu
+        const clockBefore = await context.banksClient.getClock();
+        logClock(clockBefore);
+        const startTs = clockBefore.unixTimestamp + 1n;
+        const endTs = startTs + 1000n;
+        const startTime = new BN(startTs.toString());
+        const endTime = new BN(endTs.toString());
 
-describe("Ogólny test działania kontraktu", () => {
-  // zmienne globalne dla testu
 
-  // niezbędne zmienne do działania bankrun
-  let context;
-  let provider;
-  let puppetProgram;
+        await managerProgram.methods
+            .createEvent(startTime, endTime, pollName, "Opis ankiety", candidateNames)
+            .accounts({
+                authority: authority.publicKey,
+                manager: managerPda,
+                poll: pollPda,
+                votingProgram: votingProgram.programId,
+                systemProgram: SystemProgram.programId,
+            })
+            .remainingAccounts(candidateRemainingAccounts)
+            .signers([authority])
+            .rpc();
 
-  // zmienne wymagane do manipulacji czasem
-  let client;
-  let currentClock;
+        // --- WYŚWIETLANIE EVENTU ---
+        const pollAccount = await votingProgram.account.poll.fetch(pollPda);
+        
+        console.log("\n--- DANE STWORZONEGO EVENTU ---");
+        console.log(`Nazwa: ${pollAccount.pollName}`);
+        console.log(`Opis:  ${pollAccount.pollDescription}`);
+        console.log(`Start: ${new Date(pollAccount.startTime.toNumber() * 1000).toLocaleString()}`);
+        console.log(`Koniec: ${new Date(pollAccount.endTime.toNumber() * 1000).toLocaleString()}`);
+        console.log("-------------------------------\n");
+console.log("\n--- KANDYDACI (OPCJE) ---");
 
-  // zmienne do utwworzenia kontraktu
-  let pollId = 1;
-  let votingStart = 1700000000; // Unix Timestamp. Tue Nov 14 2023 23:13:20 GMT+0100 (czas środkowoeuropejski standardowy)
-  let votingEnd = 1700010000; // Wed Nov 15 2023 02:00:00 GMT+0100 (czas środkowoeuropejski standardowy)
-  let pollName = "Nazwa testowego wydarzenia";
-  let pollDescription = "Opis testowego wydarzenia";
-  let nameCandidateA = "Candidate A";
-  let nameCandidateB = "Candidate B";
-  let nameCandidateC = "Candidate C";
+        // Musimy przejść przez listę nazw, które podaliśmy przy tworzeniu
+        for (const name of candidateNames) {
+            const [cPda] = PublicKey.findProgramAddressSync(
+                [
+                    Buffer.from("candidate_seed"),
+                    pollId.toArrayLike(Buffer, "le", 8),
+                    Buffer.from(name)
+                ],
+                votingProgram.programId
+            );
 
-  // konta użytkowników
-  let authority; // admin bądź jednostka odpowiedzialna za tworzenie i zarządzanie wydarzeniem 
-  let userA; // zwykły użytkownik kontraktu, który bierze udział w głosowaniu
-  let userB;
-  let userC;
-
-  // seedy dla adresów pochodnych programu
-  let pollSeeds;
-  let candidateASeeds;
-  let candidateBSeeds;
-  let candidateCSeeds;
-
-  let userAVoteSeeds;
-  let userBVoteSeeds;
-  let userCVoteSeeds;
-
-  // adresy pochodne programu
-  let pollPda;
-  let candidateAPda;
-  let candidateBPda;
-  let candidateCPda;
-  
-  let userAVotePda;
-  let userBVotePda;
-  let userCVotePda;
-
-  before("initialization", async () => {
-
-    // Generowanie kluczy
-    authority = Keypair.generate();
-    userA = Keypair.generate();
-    userB = Keypair.generate();
-    userC = Keypair.generate();
-
-    // zasilanie kont użytkowinków
-    const accounts = [authority, userA, userB, userC].map(user => ({
-      address: user.publicKey,
-      info: {
-        lamports: solToLamports(9), // każdy użytkownik dostaje 9 SOL
-        data: Buffer.alloc(0), // puste konto
-        owner: SystemProgram.programId,
-        executable: false, // zaznaczenie że to konto nie jest programem
-        rentEpoch: 0,
-      } as AccountInfo<Buffer>
-    }));
-    accounts.forEach(acc => {
-      console.log("Address:", acc.address.toBase58());
-      console.log("Lamports:", acc.info.lamports);
-      console.log("Owner:", acc.info.owner.toBase58());
-      console.log("Executable:", acc.info.executable);
-      console.log("Rent epoch:", acc.info.rentEpoch);
-      console.log("---------------------------");
+            try {
+                const candData = await votingProgram.account.candidate.fetch(cPda);
+                console.log(`- [ ] ${candData.candidateName.padEnd(10)} | Głosów: ${candData.candidateVotes.toNumber()}`);
+            } catch (e) {
+                console.log(`- [ ] ${name.padEnd(10)} | (Nie zainicjalizowano)`);
+            }
+        }
     });
 
-    // inicjalizacja środowiska testowego
-    context = await startAnchor("../voting", [], accounts);
-    provider = new BankrunProvider(context);
-    puppetProgram = new Program<Voting>(IDL, provider);
 
-    // inicjalizacja seedów dla adresów pochodnych programu
-    pollSeeds = [
-      Buffer.from("poll_seed"),
-      new BN(pollId).toArrayLike(Buffer, "le", 8),
-    ];
+const pollId = new BN(0);
+    const candidateName = "Alice";
 
-    candidateASeeds = [
-      Buffer.from("candidate_seed"),
-      new BN(pollId).toArrayLike(Buffer, "le", 8),
-      Buffer.from(nameCandidateA),
-    ];
+    // Pomocnicza funkcja do pobierania PDA wewnątrz testów
+    const getPdas = () => {
+        const [pollPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("poll_seed"), pollId.toArrayLike(Buffer, "le", 8)],
+            votingProgram.programId
+        );
+        const [candidatePda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("candidate_seed"), pollId.toArrayLike(Buffer, "le", 8), Buffer.from(candidateName)],
+            votingProgram.programId
+        );
+        return { pollPda, candidatePda };
+    };
 
-    candidateBSeeds = [
-      Buffer.from("candidate_seed"),
-      new BN(pollId).toArrayLike(Buffer, "le", 8),
-      Buffer.from(nameCandidateB),
-    ];
+    it("❌ Nie można oddać głosu PRZED rozpoczęciem", async () => {
+        const { pollPda, candidatePda } = getPdas();
+        const pollAcc = await votingProgram.account.poll.fetch(pollPda);
+        
+        // Ustawiamy czas na 1 sekundę PRZED startem
+        const targetTime = BigInt(pollAcc.startTime.sub(new BN(1)).toString());
+        await setClock(context, targetTime);
+        
+        try {
+            await votingProgram.methods.vote(pollId, candidateName)
+                .accounts({ participant: authority.publicKey, poll: pollPda, candidate: candidatePda, systemProgram: SystemProgram.programId })
+                .rpc();
+            assert.fail("Powinien wystąpić błąd VotingNotStarted");
+        } catch (err) {
+            assert.include(err.toString(), "VotingNotStarted"); // Kod 6002
+            console.log("✅ Prawidłowo zablokowano głosowanie przed czasem.");
+        }
+    });
 
-    candidateCSeeds = [
-      Buffer.from("candidate_seed"),
-      new BN(pollId).toArrayLike(Buffer, "le", 8),
-      Buffer.from(nameCandidateC),
-    ];
+    it("✅ Można oddać głos W TRAKCIE (2 minuty po starcie)", async () => {
+        const { pollPda, candidatePda } = getPdas();
+        const pollAcc = await votingProgram.account.poll.fetch(pollPda);
+        
+        // Ustawiamy czas na Start + 120s
+        const targetTime = BigInt(pollAcc.startTime.add(new BN(120)).toString());
+        await setClock(context, targetTime);
 
-    userAVoteSeeds = [
-      Buffer.from("vote_seed"),
-      userA.publicKey.toBytes(),
-      new BN(pollId).toArrayLike(Buffer, "le", 8),
-    ];
+        await votingProgram.methods.vote(pollId, candidateName)
+            .accounts({ participant: authority.publicKey, poll: pollPda, candidate: candidatePda, systemProgram: SystemProgram.programId })
+            .rpc();
 
-    userBVoteSeeds = [
-      Buffer.from("vote_seed"),
-      userB.publicKey.toBytes(),
-      new BN(pollId).toArrayLike(Buffer, "le", 8),
-    ];
+        const candData = await votingProgram.account.candidate.fetch(candidatePda);
+        assert.strictEqual(candData.candidateVotes.toNumber(), 1);
+        console.log("✅ Głos oddany poprawnie w trakcie trwania.");
+    });
 
-    userCVoteSeeds = [
-      Buffer.from("vote_seed"),
-      userC.publicKey.toBytes(),
-      new BN(pollId).toArrayLike(Buffer, "le", 8),
-    ];
+    it("❌ Nie można oddać głosu DRUGI RAZ przez tego samego użytkownika", async () => {
+        const { pollPda, candidatePda } = getPdas();
+        // Czas zostaje ten sam co w poprzednim teście (wciąż trwa)
 
-    // inicjalizacja adresów pochodnych programu (PDA)
-    [pollPda] = PublicKey.findProgramAddressSync(
-      pollSeeds,
-      puppetProgram.programId
-    );
+        try {
+            await votingProgram.methods.vote(pollId, candidateName)
+                .accounts({ participant: authority.publicKey, poll: pollPda, candidate: candidatePda, systemProgram: SystemProgram.programId })
+                .rpc();
+            assert.fail("Powinien wystąpić błąd VoteHaveBeenPlaced");
+        } catch (err) {
+            assert.include(err.toString(), "VoteHaveBeenPlaced");
+            console.log("✅ Prawidłowo zablokowano ponowne głosowanie.");
+        }
+    });
 
-    [candidateAPda] = PublicKey.findProgramAddressSync(
-      candidateASeeds,
-      puppetProgram.programId
-    );
+    it("❌ Nie można oddać głosu PO zakończeniu", async () => {
+        const { pollPda, candidatePda } = getPdas();
+        const pollAcc = await votingProgram.account.poll.fetch(pollPda);
+        
+        // 1. Ustawiamy czas na 1 sekundę PO końcu (np. 3:57 PM)
+        const targetTime = BigInt(pollAcc.endTime.add(new BN(1)).toString());
+        await setClock(context, targetTime);
 
-    [candidateBPda] = PublicKey.findProgramAddressSync(
-      candidateBSeeds,
-      puppetProgram.programId
-    );
+        // 2. GENERUJEMY NOWEGO UŻYTKOWNIKA (żeby uniknąć VoteHaveBeenPlaced)
+        const newVoter = Keypair.generate();
+        
+        // W Bankrun musimy zasilić nowe konto, aby mogło podpisać transakcję
+        await context.setAccount(newVoter.publicKey, {
+            lamports: 1_000_000_000,
+            data: Buffer.alloc(0),
+            owner: SystemProgram.programId,
+            executable: false,
+            rentEpoch: 0,
+        });
 
-    [candidateCPda] = PublicKey.findProgramAddressSync(
-      candidateCSeeds,
-      puppetProgram.programId
-    );
+        // 3. PDA dla głosu nowego użytkownika
+        const [newVoterVotePda] = PublicKey.findProgramAddressSync(
+            [newVoter.publicKey.toBuffer(), pollId.toArrayLike(Buffer, "le", 8)],
+            votingProgram.programId
+        );
 
-    [userAVotePda] = PublicKey.findProgramAddressSync(
-      userAVoteSeeds,
-      puppetProgram.programId
-    );
-
-    [userBVotePda] = PublicKey.findProgramAddressSync(
-      userBVoteSeeds,
-      puppetProgram.programId
-    );
-
-    [userCVotePda] = PublicKey.findProgramAddressSync(
-      userCVoteSeeds,
-      puppetProgram.programId
-    );
-
-    // inicjalizacja zegara
-    client = context.banksClient;
-    currentClock = await client.getClock();
-
-    // Kontrolne wypisanie po inicjalizacji 
-    logClock(currentClock);
-
-    await printBalance(context, "authority", authority.publicKey);
-    await printBalance(context, "userA", userA.publicKey);
-    await printBalance(context, "userB", userB.publicKey);
-    await printBalance(context, "userC", userC.publicKey);
-
-    logPda("Poll", pollPda, pollSeeds);
-    logPda("Candidate A", candidateAPda, candidateASeeds);
-    logPda("Candidate B", candidateBPda, candidateBSeeds);
-    logPda("UserA Vote", userAVotePda, userAVoteSeeds);
-    logPda("UserB Vote", userBVotePda, userBVoteSeeds);
-    logPda("UserC Vote", userCVotePda, userCVoteSeeds);
-
-  });
+        try {
+            await votingProgram.methods.vote(pollId, candidateName)
+                .accounts({ 
+                    participant: newVoter.publicKey, // Nowy głosujący!
+                    poll: pollPda, 
+                    candidate: candidatePda, 
+                    systemProgram: SystemProgram.programId 
+                })
+                .signers([newVoter]) // Musi podpisać
+                .rpc();
+            
+            assert.fail("Powinien wystąpić błąd VotingEnded");
+        } catch (err) {
+            // Logujemy błąd, aby zobaczyć co dokładnie zwraca
+            console.log("Złapany błąd:", err.toString());
+            assert.include(err.toString(), "VotingEnded");
+        }
+    });
 });
